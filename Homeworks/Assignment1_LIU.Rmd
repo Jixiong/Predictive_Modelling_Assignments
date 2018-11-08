@@ -1,0 +1,182 @@
+---
+title: "assignment1"
+author: "LIU Jixiong"
+date: "2018/11/05"
+output: html_document
+---
+
+##The homework day 1
+
+
+Apply multiple linear regression to the Auto data set and answer the following five questions. Submit
+your concise answers in a written form in R markdown format (Rmd file containing R code) along with its
+knitted version (.nb.html file with R code containing code, computations and results).
+
+
+#QUESTION 1 
+
+###Produce a scatterplot matrix which includes all of the variables in the data set.
+
+Download, install and load some additional packages
+```{r}
+require(ISLR)
+
+```
+
+data preprocessing and split the training set and the testing set
+```{r}
+Auto$name <- NULL
+set.seed(1)
+train=sample(nrow(Auto), nrow(Auto) * 0.7)
+Training_set <- Auto[train,]
+Testing_set <- Auto[-train,]
+```
+
+Showing the data by using the library GGally
+```{r}
+GGally::ggpairs(Training_set)
+
+```
+<br>
+By using this scatterplot which includes all of the variables, we can make some assumptions like displacement and the cylinders have a strong relationship between each other
+
+# QUESTION 2
+
+### Compute the matrix of correlations between all the relevant variables using the function cor().
+
+```{r}
+cor(Training_set)
+
+```
+
+
+# QUESTION 3 
+
+###With mpg as the response variable and other applicable variables as predictors test multiple linear regression model. Rank the predictors according to their relation with response and justify your answer.
+
+
+I wanna use the K-fonds methode to find the best model, so first of all I separate the intervals of the trainning data in to 3 randomly 
+```{r}
+set.seed(81)
+train1=sample(nrow(Training_set), nrow(Training_set) * 0.33)
+train2and3 <- Training_set[-train1,]
+
+train2=sample(nrow(train2and3), nrow(train2and3) * 0.5)
+train3_<- train2and3[-train2,]
+
+train3 <- sample(nrow(train3_), nrow(train3_))
+
+training <-cbind(train1, train2, train3)
+
+training[1:10,]
+
+```
+
+
+And then I will creat 3 models and the one with less error will be using
+```{r}
+cv.error <- list()
+
+for(i in 1:3){
+  lm.fit <- lm(mpg~.,data = Training_set[-training[,i],])
+  cv.error[i] <- abs(mean((Training_set[training[,i],]$mpg-predict(lm.fit,Training_set[training[,i],]))))
+}
+cv.error
+
+```
+
+so we treat the least one as the valide set will be the best model
+```{r}
+best <- which.min(cv.error)
+
+best
+
+```
+
+Do the linear regression with our best model
+```{r}
+lm.fit <- lm(mpg~.,data = Training_set[-training[,best],])
+
+summary(lm.fit)
+
+```
+
+and then we rank the predictors by observing the abs of "estimate" value
+
+we will get origin > year > cylinders > acceleration > displacement > weight
+
+
+# QUESTION 4 
+
+###Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?
+
+We can do it in two ways
+
+First we can try all the posible combinations and find the importance by the p value
+
+```{r}
+lm.fit <- lm(mpg~. + origin * year * cylinders * acceleration * displacement * weight,data = Training_set[training,])
+
+summary(lm.fit)
+
+```
+
+so by observation, we can find the [cylinders:displacement:weight:acceleration:year, cylinders:displacement:weight:acceleration, cylinders:displacement:weight:year, cylinders:displacement:acceleration:year, cylinders:displacement:weight, cylinders:year:origin, acceleration:origin] have a statisfically significant interactions
+
+and we can also find the importance by observing the GGally::ggpairs(Training_set)
+
+```{r}
+
+GGally::ggpairs(Training_set)
+
+```
+<br>
+The higher the corr coeffient is, the more intercation they will have
+
+# QUESTION 5
+
+### Which of the different transformations of the variables, such as log(X), sqrt and polynomial expansion make sense? Justify your answers.
+
+I will take the mpg and the weignt for study
+
+### linear
+
+```{r}
+
+lm.fit <- lm(mpg~weight,data = Training_set[training,])
+
+summary(lm.fit)
+
+```
+
+###  log(X)
+
+```{r}
+
+lm.fit <- lm(mpg~log(weight),data = Training_set[training,])
+
+summary(lm.fit)
+
+```
+
+### sqrt
+
+```{r}
+
+lm.fit <- lm(mpg~weight + I(weight^2),data = Training_set[training,])
+
+summary(lm.fit)
+
+```
+
+### polynomial 
+
+```{r}
+
+lm.fit <- lm(mpg~poly(weight, 5),data = Training_set[training,])
+
+summary(lm.fit)
+
+```
+
+By comparing those transformations, I will chose the polynomial whit 5 coeffients, because it has the most R-squared value, and it seems not overfitting

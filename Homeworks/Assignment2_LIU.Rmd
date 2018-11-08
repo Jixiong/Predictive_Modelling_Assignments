@@ -1,0 +1,111 @@
+---
+title: "Assignment2_LIU"
+author: "LIU Jixiong"
+date: "2018/11/07"
+output: html_document
+---
+
+##The homework day 2
+
+Apply logistic regression and kNN algorithm to the Carseats data set, where the response variable is
+discretized as High if Sales>8 and Low if Sales<=8. For both algorithms provide reliable estimates of
+classification accuracy, sensitivity, specificity and Cohen’s kappa. Kappa is defined as agreement
+between a given classifier and a random (majority voting) classifier. Use the following estimation
+method: apply 10 fold cross-validation.
+
+
+Download, install and load some additional packages
+```{r}
+library(ISLR)
+library(caret)
+require(class)
+library(CORElearn)
+attach(Carseats)
+```
+
+
+Data preprocessing 
+```{r}
+Value <- ifelse(Sales<8, "Low", "High")
+Carseats <- data.frame(Carseats, Value)
+Carseats$Sales <- NULL
+head(Carseats)
+```
+
+
+Initialisation of the data frame which will be used
+```{r}
+Sales_regression = data.frame(row.names = c('Accuracy', 'Sensitivity', 'Specificity', 'Kappa'))
+Sales_knn = Sales_regression
+```
+
+
+K folds declaration
+```{r}
+data <- Carseats
+folds <- 10
+foldIdx <- cvGen(nrow(data), k=folds)
+```
+
+Creation the models of the Logisic Regression and KNN, then save the 'Accuracy', 'Sensitivity', 'Specificity', 'Kappa' of all models into two dataframeworks, one for KNN, the other is for Logisic Regression
+```{r}
+
+# k fonds valitation
+for(i in 1:folds){
+  
+#logistic regression
+dTrain <- data[foldIdx!=i,]
+dTest  <- data[foldIdx==i,]
+Ture_test=Value[foldIdx==i]
+
+
+glm.fit=glm(Value~.,data = dTrain,family = binomial)
+glm.probs=predict(glm.fit,dTest,type="response")
+glm.pred=rep("High",nrow(dTest))
+glm.pred[glm.probs>.5]="Low"
+ConfusionM=table(glm.pred,Ture_test)
+  
+ReConfusionM <- confusionMatrix(ConfusionM)
+ReConfusionM <- c(ReConfusionM$overall['Accuracy'], ReConfusionM$byClass['Sensitivity'],ReConfusionM$byClass['Specificity'], ReConfusionM$overall['Kappa'])
+ReConfusionM <- data.frame(ReConfusionM)
+
+Sales_regression <- cbind(Sales_regression, ReConfusionM)
+
+#KNN
+dTrain.X=cbind(Price,CompPrice,ShelveLoc)[foldIdx!=i,]
+dTest.X=cbind(Price,CompPrice,ShelveLoc)[foldIdx==i,]
+High.train=Value[foldIdx!=i]
+Ture_test=Value[foldIdx==i]
+knn.pred=knn(dTrain.X,dTest.X, High.train, k=i)
+
+ConfusionM=table(knn.pred,Ture_test)
+ReConfusionM <- confusionMatrix(ConfusionM)
+ReConfusionM <- c(ReConfusionM$overall['Accuracy'], ReConfusionM$byClass['Sensitivity'],ReConfusionM$byClass['Specificity'], ReConfusionM$overall['Kappa'])
+ReConfusionM <- data.frame(ReConfusionM)
+
+Sales_knn <- cbind(Sales_knn, ReConfusionM)
+
+}
+```
+
+
+The 'Accuracy', 'Sensitivity', 'Specificity' and 'Kappa' of 10 folds for Logisic Regression
+```{r}
+Sales_regression
+```
+
+
+The 'Accuracy', 'Sensitivity', 'Specificity' and 'Kappa' of 10 folds for KNN
+```{r}
+Sales_knn
+```
+
+Comparate the means and the standard deviations
+```{r}
+cbind( transform(rowMeans(Sales_regression), SD=apply(Sales_regression,1, sd, na.rm = TRUE)),transform(rowMeans(Sales_knn), SD=apply(Sales_knn,1, sd, na.rm = TRUE)))
+```
+
+By comparing these results, it looks like logistic regression is better than KNN in this data set and it has a strong aggrement.
+
+
+

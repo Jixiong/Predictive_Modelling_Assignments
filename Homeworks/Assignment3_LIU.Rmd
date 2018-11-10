@@ -1,0 +1,109 @@
+---
+title: "Assignment3_LIU"
+author: "LIU Jixiong"
+date: "2018 11 9 "
+output: html_document
+---
+
+##The homework day 3
+
+
+
+Download, install and load some additional packages
+```{r}
+require(caret)
+```
+
+importing data
+```{r}
+Train_set <- read.table("F:/cycle ingenieur 2/semestre9/Predictive Analytics/homework/spamlearn_train.txt",header = T)
+Test_set <- read.table("F:/cycle ingenieur 2/semestre9/Predictive Analytics/homework/spamlearn_test.txt",header = T)
+```
+
+
+The package support several metrics, for simplicity let us take classification accuracy.
+Define data preprocessing options, in this case centering and scaling of variables.
+```{r}
+metric <- "Accuracy"
+preProcess=c("center", "scale")
+```
+
+we choose 5 times repeated 2/fold CV. We also prepare a seed for random number generator to get repeatable results.
+
+```{r}
+seed <- 1
+control <- trainControl(method="repeatedcv", number=2, repeats=5)
+```
+
+
+
+Initialisation of the data frame which will be used
+```{r}
+predictions <- data.frame(row.names =  'Accuracy')
+predictions 
+```
+
+Next we train several classifiers
+```{r}
+warnLevel=getOption("warn")
+options(warn=-1)
+#CART
+set.seed(seed)
+fit.cart <- train(Class~., data=Train_set, method="rpart",  trControl=control)
+plsClasses <- predict(fit.cart, newdata = Test_set)
+CART <- confusionMatrix(data = plsClasses, Test_set$Class)
+CART <- CART$overall['Accuracy']
+predictions <- cbind(predictions, CART)
+
+#LDA
+set.seed(seed)
+fit.lda <- train(Class~., data=Train_set, method="lda",  trControl=control)
+plsClasses <- predict(fit.lda, newdata = Test_set)
+LDA <- confusionMatrix(data = plsClasses, Test_set$Class)
+LDA <-  LDA$overall['Accuracy']
+predictions <- cbind(predictions, LDA)
+
+#GLM
+set.seed(seed)
+fit.glm <- train(Class~., data=Train_set, method="glm",preProc=c("center", "scale"),  trControl=control)
+plsClasses <- predict(fit.glm, newdata = Test_set)
+glm <- confusionMatrix(data = plsClasses, Test_set$Class)
+glm <-glm$overall['Accuracy']
+predictions <- cbind(predictions, glm)
+
+#KNN
+set.seed(seed)
+fit.knn <- train(Class~., data=Train_set, method="knn",preProc=c("center", "scale"),  trControl=control)
+plsClasses <- predict(fit.knn, newdata = Test_set)
+KNN <- confusionMatrix(data = plsClasses, Test_set$Class)
+KNN<- KNN$overall['Accuracy']
+predictions <- cbind(predictions, KNN)
+
+#TREEBAG
+set.seed(seed)
+fit.treebag <- train(Class~., data=Train_set, method="treebag",  trControl=control)
+plsClasses <- predict(fit.treebag, newdata = Test_set)
+TB <- confusionMatrix(data = plsClasses, Test_set$Class)
+TB<-  TB$overall['Accuracy']
+predictions <- cbind(predictions, TB)
+
+```
+
+And finally visualization and comparison of the results of models.
+```{r}
+results <- resamples(list(logistic=fit.glm, knn=fit.knn,  cart=fit.cart, lda= fit.lda, treebag=fit.treebag))
+bwplot(results)
+```
+
+and we have the results of the test set
+```{r}
+predictions 
+```
+
+which can be showed by a bar char
+```{r}
+predictions <- as.matrix(predictions)
+barplot(predictions)
+```
+
+So acording to the result, chose the treebag model might be the best choice
